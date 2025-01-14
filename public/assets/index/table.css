@@ -1,0 +1,22 @@
+table .sort {
+    cursor: pointer;
+}
+
+table .sort::after {
+    opacity: 0;
+    margin-left: 5px;
+    right: -2px !important;
+}
+
+table .sort::before {
+    top: 12px !important;
+    right: -2px !important;
+}
+
+table .select_sort::after {
+    opacity: 1;
+}
+
+table .select_sort::before {
+    opacity: 0;
+}

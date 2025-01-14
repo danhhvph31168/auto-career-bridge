@@ -1,0 +1,75 @@
+image: lorisleiva/laravel-docker:latest
+
+.change_file_permissions: &change_file_permissions |
+  find . -type f -not -path "./vendor/*" -exec chmod 664 {} \;
+  find . -type d -not -path "./vendor/*" -exec chmod 775 {} \;
+
+stages:
+  - build
+  - quality
+  # - deploy
+
+composer:
+  stage: build
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-composer
+    paths:
+      - vendor/
+  script:
+    - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
+    - cp .env.example .env
+  only:
+    - merge_requests
+    - develop
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - vendor/
+      - .env
+
+codestyle:
+  stage: quality
+  dependencies:
+    - composer
+  script:
+    - ./vendor/bin/pint --test
+  when: always
+  rules:
+    - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+  allow_failure: false
+
+
+# .init_ssh: &init_ssh |
+#   which ssh-agent || ( apt-get install -qq openssh-client )
+#   eval $(ssh-agent -s)
+#   echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+#   mkdir -p ~/.ssh
+#   chmod 700 ~/.ssh
+#   [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+
+# deploy_develop:
+#   stage: deploy
+#   dependencies:
+#     - composer
+#   script:
+#     - *init_ssh
+#     - |
+#       ssh $SSH_USER@$SSH_HOST << EOT
+#       cd $SSH_FOLDER
+#       git checkout develop
+#       git pull origin develop
+#       composer install
+#       php artisan migrate
+#       php artisan optimize:clear
+#       git restore .
+#       echo "Application deployed!"
+#       exit
+#       EOT
+#   when: always
+#   only:
+#     - develop
+#deploy_to_physical_server:
+#  extends: .deploy
+#  rules:
+#    - if: $CI_COMMIT_REF_NAME == "develop"
+#  allow_failure: false
